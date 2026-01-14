@@ -1,0 +1,72 @@
+import { Global, Module } from '@nestjs/common';
+import { LoggerModule as PinoModule } from 'nestjs-pino';
+import { AppLogger } from './logger.service';
+
+function parseBool(v?: string) {
+  return String(v).toLowerCase() === 'true';
+}
+
+@Global()
+@Module({
+  imports: [
+    PinoModule.forRoot({
+      pinoHttp: {
+        redact: {
+          paths: [
+            'req.headers.authorization',
+            'req.headers.cookie',
+            'req.body.password',
+            'req.body.refreshToken',
+            'res.headers["set-cookie"]',
+          ],
+          censor: '[REDACTED]',
+        },
+        autoLogging: true,
+        customProps: (req) => ({
+          service: process.env.SERVICE_NAME || 'app',
+          version: process.env.SERVICE_VERSION || '0.0.0',
+          env: process.env.NODE_ENV || 'development',
+          requestId: req?.headers?.['x-request-id'],
+        }),
+        level: process.env.LOG_LEVEL || 'info',
+        transport: parseBool(process.env.LOG_PRETTY)
+          ? {
+              target: 'pino-pretty',
+              options: {
+                colorize: true,
+                singleLine: false,
+                translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l o',
+                messageFormat:
+                  '{service}/{env} {requestId} {req.method} {req.url} -> {res.statusCode} {responseTime}ms {msg}',
+              },
+            }
+          : undefined,
+        serializers: {
+          req(req) {
+            return {
+              method: req.method,
+              url: req.url,
+              ip: req.ip,
+              headers: {
+                'user-agent': req.headers['user-agent'],
+                'x-request-id': req.headers['x-request-id'],
+              },
+              body:
+                req.raw?.body && process.env.NODE_ENV === 'development'
+                  ? req.raw.body
+                  : undefined,
+            };
+          },
+          res(res) {
+            return {
+              statusCode: res.statusCode,
+            };
+          },
+        },
+      },
+    }),
+  ],
+  providers: [AppLogger],
+  exports: [AppLogger, PinoModule],
+})
+export class LoggerModule {}
