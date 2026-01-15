@@ -1,6 +1,5 @@
 import { Global, Module } from '@nestjs/common';
 import { LoggerModule as PinoModule } from 'nestjs-pino';
-import { AppLogger } from './logger.service';
 
 function parseBool(v?: string) {
   return String(v).toLowerCase() === 'true';
@@ -66,7 +65,6 @@ function parseBool(v?: string) {
       },
     }),
   ],
-  providers: [AppLogger],
-  exports: [AppLogger, PinoModule],
+  exports: [PinoModule],
 })
 export class LoggerModule {}

@@ -1,0 +1,219 @@
+services:
+  # ===================== RABBITMQ =====================
+  rabbitmq-qtim:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq-qtim
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RMQ_DEFAULT_PASS:-guest}
+      RABBITMQ_ERLANG_COOKIE: ${RMQ_ERLANG_COOKIE:-supersecretcookie}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    networks: [qtim_appnet]
+
+  # ===================== REDIS =====================
+  redis-qtim:
+    image: redis:7.4-alpine
+    container_name: redis-qtim
+    command: >
+      redis-server --appendonly yes --requirepass supersecretpassword123
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", 'redis-cli -a "supersecretpassword123" ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks: [qtim_appnet]
+
+  # ===================== REDIS GUI =====================
+  redisinsight-qtim:
+    image: redis/redisinsight:latest
+    container_name: redisinsight-qtim
+    ports:
+      - "5540:5540"
+    depends_on:
+      redis-qtim:
+        condition: service_healthy
+    networks: [qtim_appnet]
+
+  # ===================== USERS DB =====================
+  users-db-qtim:
+    image: postgres:16
+    container_name: users-db-qtim
+    env_file: ./users/.env
+    volumes:
+      - users_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+    networks: [qtim_appnet]
+
+  # ===================== AUTH DB =====================
+  auth-db-qtim:
+    image: postgres:16
+    container_name: auth-db-qtim
+    env_file: ./auth/.env
+    volumes:
+      - auth_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5431:5432"
+    networks: [qtim_appnet]
+
+  # ===================== USERS (dev, hot reload) =====================
+  users-dev-qtim:
+    profiles: ["dev"]
+    build:
+      context: ../user
+      dockerfile: Dockerfile
+      target: dev
+    container_name: users-svc-dev-qtim
+    env_file:
+      - ./users/.env
+    environment:
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@rabbitmq-qtim:5672}
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "200"
+      WATCHPACK_POLLING: "true"
+      REDIS_HOST: redis-qtim
+      REDIS_PORT: 6379
+    depends_on:
+      rabbitmq-qtim: { condition: service_healthy }
+      users-db-qtim: { condition: service_healthy }
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+    ports: ["3002:3002"]
+    volumes:
+      - ../user/src:/app/src
+      - ../user/tsconfig.json:/app/tsconfig.json
+      - ../user/tsconfig.build.json:/app/tsconfig.build.json
+      - ../user/nest-cli.json:/app/nest-cli.json
+    networks: [qtim_appnet]
+
+  # ===================== AUTH (dev, hot reload) =====================
+  auth-dev-qtim:
+    profiles: ["dev"]
+    build:
+      context: ../auth
+      dockerfile: Dockerfile
+      target: dev
+    container_name: auth-svc-dev-qtim
+    env_file:
+      - ./auth/.env
+    environment:
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@rabbitmq-qtim:5672}
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "200"
+      WATCHPACK_POLLING: "true"
+      JWT_PRIVATE_KEY_PATH: /run/secrets/jwt_access_key
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt_access_pub
+      JWT_REFRESH_PRIVATE_KEY_PATH: /run/secrets/jwt_refresh_key
+      JWT_REFRESH_PUBLIC_KEY_PATH: /run/secrets/jwt_refresh_pub
+      REDIS_HOST: redis-qtim
+      REDIS_PORT: 6379
+    depends_on:
+      rabbitmq-qtim: { condition: service_healthy }
+      auth-db-qtim: { condition: service_healthy }
+    secrets:
+      - jwt_access_key
+      - jwt_access_pub
+      - jwt_refresh_key
+      - jwt_refresh_pub
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+    ports: ["3003:3003"]
+    volumes:
+      - ../auth/src:/app/src
+      - ../auth/tsconfig.json:/app/tsconfig.json
+      - ../auth/tsconfig.build.json:/app/tsconfig.build.json
+      - ../auth/nest-cli.json:/app/nest-cli.json
+    networks: [qtim_appnet]
+
+  # ===================== GATEWAY (dev, hot reload) =====================
+  gateway-dev-qtim:
+    profiles: ["dev"]
+    build:
+      context: ../gateway
+      dockerfile: Dockerfile
+      target: dev
+    container_name: gateway-dev-qtim
+    env_file:
+      - ./gateway/.env
+    environment:
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@rabbitmq-qtim:5672}
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "200"
+      WATCHPACK_POLLING: "true"
+      REDIS_HOST: redis-qtim
+      REDIS_PORT: 6379
+
+      LOG_LEVEL: debug # for pino
+
+      JWT_PRIVATE_KEY_PATH: /run/secrets/jwt_access_key
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt_access_pub
+      JWT_REFRESH_PRIVATE_KEY_PATH: /run/secrets/jwt_refresh_key
+      JWT_REFRESH_PUBLIC_KEY_PATH: /run/secrets/jwt_refresh_pub
+    secrets:
+      - jwt_access_key
+      - jwt_access_pub
+      - jwt_refresh_key
+      - jwt_refresh_pub
+    depends_on:
+      rabbitmq-qtim: { condition: service_healthy }
+      users-dev-qtim: { condition: service_started }
+      auth-dev-qtim: { condition: service_started }
+      redis-qtim: { condition: service_healthy }
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+    ports: ["3000:3000"]
+    volumes:
+      - ../gateway/src:/app/src
+      - ../gateway/tsconfig.json:/app/tsconfig.json
+      - ../gateway/tsconfig.build.json:/app/tsconfig.build.json
+      - ../gateway/nest-cli.json:/app/nest-cli.json
+    networks: [qtim_appnet]
+
+# ===================== VOLUMES/NETWORKS/SECRETS =====================
+volumes:
+  redis_data: {}
+  rabbitmq_data: {}
+  users_pgdata: {}
+  auth_pgdata: {}
+
+networks:
+  qtim_appnet:
+    driver: bridge
+
+secrets:
+  jwt_access_key:
+    file: ./.secrets/jwt_access.key
+  jwt_access_pub:
+    file: ./.secrets/jwt_access.pub
+  jwt_refresh_key:
+    file: ./.secrets/jwt_refresh.key
+  jwt_refresh_pub:
+    file: ./.secrets/jwt_refresh.pub
+# COMPOSE_PROFILES=dev docker compose up -d
+# COMPOSE_PROFILES=dev docker compose build --no-cache

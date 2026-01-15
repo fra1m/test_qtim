@@ -1,25 +1,86 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
-import { App } from 'supertest/types';
-import { AppModule } from './../src/app.module';
+import { randomUUID } from 'node:crypto';
 
-describe('AppController (e2e)', () => {
-  let app: INestApplication<App>;
+const normalizeBaseUrl = (raw: string): string => raw.replace(/\/+$/, '');
 
-  beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+const normalizePrefix = (raw: string): string => {
+  const trimmed = raw.replace(/^\/+|\/+$/g, '');
+  return `/${trimmed}`;
+};
 
-    app = moduleFixture.createNestApplication();
-    await app.init();
+const baseUrl = normalizeBaseUrl(
+  process.env.E2E_BASE_URL ?? 'http://localhost:3000',
+);
+const apiPrefix = normalizePrefix(process.env.E2E_API_PREFIX ?? 'api/v1');
+const registrationPath = `${apiPrefix}/user/registration`;
+
+const makeEmail = (): string => {
+  const rand = Math.random().toString(36).slice(2, 8);
+  return `User+${Date.now()}-${rand}@Example.com`;
+};
+
+describe('User registration (e2e, real services)', () => {
+  jest.setTimeout(60000);
+
+  it('POST /api/v1/user/registration returns user + tokens and sets refresh cookie', async () => {
+    const rawEmail = makeEmail();
+    const dto = {
+      email: rawEmail,
+      name: 'User',
+      contributionId: 7,
+      password: 'secret12',
+    };
+
+    const res = await request(baseUrl)
+      .post(registrationPath)
+      .set('x-request-id', randomUUID())
+      .send(dto)
+      .expect(201);
+
+    expect(res.body).toEqual({
+      user: expect.objectContaining({
+        email: rawEmail.toLowerCase(),
+        name: 'User',
+        contributionId: 7,
+        sub: expect.any(Number),
+      }),
+      tokens: expect.objectContaining({
+        accessToken: expect.any(String),
+        refreshToken: expect.any(String),
+        accessJti: expect.any(String),
+        refreshJti: expect.any(String),
+        accessTtlSec: expect.any(Number),
+        refreshTtlSec: expect.any(Number),
+      }),
+    });
+
+    const setCookie = res.headers['set-cookie']?.[0] ?? '';
+    expect(setCookie).toContain('refreshToken=');
+    expect(setCookie).toContain('HttpOnly');
+    expect(setCookie).toContain('Path=/');
   });
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World!');
+  it('rejects duplicate registration for the same email', async () => {
+    const rawEmail = makeEmail();
+    const payload = {
+      email: rawEmail,
+      name: 'User',
+      contributionId: 7,
+      password: 'secret12',
+    };
+
+    await request(baseUrl)
+      .post(registrationPath)
+      .set('x-request-id', randomUUID())
+      .send(payload)
+      .expect(201);
+
+    const res = await request(baseUrl)
+      .post(registrationPath)
+      .set('x-request-id', randomUUID())
+      .send(payload)
+      .expect(400);
+
+    expect(typeof res.body.message).toBe('string');
   });
 });

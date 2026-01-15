@@ -2,25 +2,21 @@ import * as Joi from 'joi';
 
 export const envSchema = Joi.object({
   NODE_ENV: Joi.string()
-    .valid('development', 'production', 'test')
+    .valid('development', 'test', 'production')
     .default('development'),
 
-  PORT: Joi.number().port().default(3002),
+  // RMQ
+  RABBITMQ_URL: Joi.string().uri().required(),
+  RMQ_AUTH_QUEUE: Joi.string().default('auth'),
+  RMQ_PREFETCH: Joi.number().integer().min(1).default(16),
 
-  // RMQ base
-  RABBITMQ_URL: Joi.string().required(),
+  // HTTP
+  PORT: Joi.number().integer().default(3003),
 
-  // Queues
-  RMQ_AVITO_WORKER_QUEUE: Joi.string().min(1).default('avito_worker'),
-  RMQ_EVENTS_QUEUE: Joi.string().min(1).default('gateway.events'),
-
-  // Consumer tuning (если будешь использовать)
-  RMQ_PREFETCH: Joi.number().integer().min(1).max(500).default(50),
-
-  // Queue args used by buildRmqOptions()
-  RMQ_DLX: Joi.string().min(1).default('dlx'),
-
-  // optional numbers (can be unset)
-  RMQ_MESSAGE_TTL_MS: Joi.number().integer().min(1).optional(),
-  RMQ_MAX_LENGTH: Joi.number().integer().min(1).optional(),
+  // Postgres (если используешь поля отдельно)
+  POSTGRES_HOST: Joi.string().required(),
+  POSTGRES_PORT: Joi.number().integer().default(5432),
+  POSTGRES_DB: Joi.string().required(),
+  POSTGRES_USER: Joi.string().required(),
+  POSTGRES_PASSWORD: Joi.string().allow('').required(),
 }).unknown(true);

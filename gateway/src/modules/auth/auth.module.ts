@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
+import { RmqModule } from 'src/common/rmq/rmq.module';
 
 @Module({
-  controllers: [AuthController],
+  imports: [RmqModule.forAuth()],
   providers: [AuthService],
+  exports: [AuthService],
 })
 export class AuthModule {}
