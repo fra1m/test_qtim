@@ -8,8 +8,8 @@ export class CreateUserDto {
   @IsString({ message: 'Должно быть строкой' })
   name: string;
 
-  @IsNumber({}, { message: 'Должно быть числом' })
-  contributionId?: number;
+  // @IsNumber({}, { message: 'Должно быть числом' })
+  // contributionId?: number;
 
   @IsString({ message: 'Должно быть строкой' })
   @Length(6, 16, {

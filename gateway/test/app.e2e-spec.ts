@@ -27,7 +27,6 @@ describe('User registration (e2e, real services)', () => {
     const dto = {
       email: rawEmail,
       name: 'User',
-      contributionId: 7,
       password: 'secret12',
     };
 
@@ -41,7 +40,6 @@ describe('User registration (e2e, real services)', () => {
       user: expect.objectContaining({
         email: rawEmail.toLowerCase(),
         name: 'User',
-        contributionId: 7,
         sub: expect.any(Number),
       }),
       tokens: expect.objectContaining({
@@ -65,7 +63,6 @@ describe('User registration (e2e, real services)', () => {
     const payload = {
       email: rawEmail,
       name: 'User',
-      contributionId: 7,
       password: 'secret12',
     };
 

@@ -63,7 +63,6 @@ describe('UserController registration', () => {
     const dto: CreateUserDto = {
       email: '  Test@Example.COM ',
       name: 'Tester',
-      contributionId: 7,
       password: 'secret',
     };
     const reqId = 'rid-123';
@@ -71,7 +70,6 @@ describe('UserController registration', () => {
       sub: 42,
       email: 'test@example.com',
       name: 'Tester',
-      contributionId: 7,
     };
     const tokens: TokenModel = {
       accessToken: 'access',
@@ -99,7 +97,6 @@ describe('UserController registration', () => {
       {
         email: 'test@example.com',
         name: 'Tester',
-        contributionId: 7,
       },
     );
     expect(authService.generateTokens).toHaveBeenCalledWith(

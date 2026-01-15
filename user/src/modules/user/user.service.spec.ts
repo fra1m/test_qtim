@@ -21,7 +21,6 @@ describe('UserService business logic', () => {
       id: 1,
       email: 'test@example.com',
       name: 'Tester',
-      contributionId: 7,
       ...overrides,
     }) as UserEntity;
 
@@ -58,7 +57,6 @@ describe('UserService business logic', () => {
     const dto: CreateUserDto = {
       email: 'test@example.com',
       name: 'Tester',
-      contributionId: 7,
     };
     repo.findOne.mockResolvedValue(makeUser({ id: 2 }));
 
@@ -70,7 +68,6 @@ describe('UserService business logic', () => {
     const dto: CreateUserDto = {
       email: 'test@example.com',
       name: 'Tester',
-      contributionId: 7,
     };
     const user = makeUser();
     repo.findOne.mockResolvedValue(null);
