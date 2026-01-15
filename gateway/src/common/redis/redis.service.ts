@@ -2,31 +2,17 @@ import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
-import IORedis from 'ioredis';
+import type IORedis from 'ioredis';
 
 const PREFIX = 'gw:'; // чтобы ключи группировались в RedisInsight
-
-const k = {
-  userById: (id: number) => `${PREFIX}user:id:${id}`,
-  userByEmail: (email: string) => `${PREFIX}user:email:${email}`,
-  reqMap: (rid: string) => `${PREFIX}req:${rid}`,
-};
 
 @Injectable()
 export class CacheHelper {
   constructor(
-    @Inject(CACHE_MANAGER) private readonly cache: Cache, // оставляем для HTTP-кэша (интерсептор)
+    @Inject(CACHE_MANAGER) private readonly cache: Cache, // для HTTP-кэша (интерсептор)
     @Inject('REDIS_RAW') private readonly redis: IORedis, // сырой клиент для write-through
     @InjectPinoLogger(CacheHelper.name) private readonly logger: PinoLogger,
-  ) {
-    // Берём параметры из process.env, чтобы совпадали с CacheModule
-    this.redis = new IORedis({
-      host: process.env.REDIS_HOST ?? 'redis',
-      port: Number(process.env.REDIS_PORT ?? 6379),
-      password: process.env.REDIS_PASSWORD || undefined,
-      // желательно такой же keyPrefix не ставить здесь, мы префиксуем вручную
-    });
-  }
+  ) {}
 
   async ping(): Promise<boolean> {
     try {
@@ -133,7 +119,7 @@ export class CacheHelper {
   /** Проверка: есть ли пользователь с таким email в кеше (и мгновенный отказ) */
   async ensureEmailFree(emailRaw: string): Promise<void> {
     const email = emailRaw.trim().toLowerCase();
-    const hit = await this.cache.get<string>(k.userByEmail(email));
+    const hit = await this.getJson(`user:email:${email}`);
     if (hit) {
       this.logger.debug({ email }, 'cache.email hit → conflict');
       throw new ConflictException('User with this email already exists');
@@ -144,21 +130,31 @@ export class CacheHelper {
 
   async writeUserCache(
     user: {
-      id: number;
+      id?: number;
+      sub?: number;
       name: string;
       email: string;
-      role: string;
-      sub?: number;
+      contributionId?: number;
     },
     ttlSec = 1800,
   ) {
-    const payload = { ...user, sub: user.sub ?? user.id };
-    await this.setJson(`user:id:${user.id}`, payload, ttlSec);
-    await this.setJson(
-      `user:email:${user.email.toLowerCase()}`,
-      payload,
-      ttlSec,
-    );
+    const userId = user.sub ?? user.id;
+    if (!userId) {
+      this.logger.warn(
+        { user },
+        'redis.writeUserCache skipped (missing user id)',
+      );
+      return;
+    }
+    const email = user.email.trim().toLowerCase();
+    const payload = {
+      sub: user.sub ?? userId,
+      name: user.name,
+      email,
+      contributionId: user.contributionId,
+    };
+    await this.setJson(`user:id:${userId}`, payload, ttlSec);
+    await this.setJson(`user:email:${email}`, payload, ttlSec);
   }
 
   async markSession(jti: string, userId: number, ttlSec: number) {
