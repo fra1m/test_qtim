@@ -25,7 +25,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 COPY --from=build /app/dist ./dist
 USER app
-EXPOSE 3003
+EXPOSE 3004
 CMD ["node", "dist/main.js"]
 
 # ---------- dev (hot-reload) ----------
@@ -36,5 +36,5 @@ RUN apk add --no-cache docker-cli
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-EXPOSE 3003
+EXPOSE 3004
 CMD ["npm", "run", "start:dev"]

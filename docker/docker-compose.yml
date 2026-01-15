@@ -79,6 +79,22 @@ services:
       - "5431:5432"
     networks: [qtim_appnet]
 
+  # ===================== CONTRIBUTIONS DB =====================
+  contributions-db-qtim:
+    image: postgres:16
+    container_name: contributions-db-qtim
+    env_file: ./contribution/.env
+    volumes:
+      - contributions_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5434:5432"
+    networks: [qtim_appnet]
+
   # ===================== USERS (dev, hot reload) =====================
   users-dev-qtim:
     profiles: ["dev"]
@@ -150,6 +166,35 @@ services:
       - ../auth/nest-cli.json:/app/nest-cli.json
     networks: [qtim_appnet]
 
+  # ===================== CONTRIBUTION (dev, hot reload) =====================
+  contribution-dev-qtim:
+    profiles: ["dev"]
+    build:
+      context: ../contribution
+      dockerfile: Dockerfile
+      target: dev
+    container_name: contribution-svc-dev-qtim
+    env_file:
+      - ./contribution/.env
+    environment:
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@rabbitmq-qtim:5672}
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "200"
+      WATCHPACK_POLLING: "true"
+    depends_on:
+      rabbitmq-qtim: { condition: service_healthy }
+      contributions-db-qtim: { condition: service_healthy }
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+    ports: ["3004:3004"]
+    volumes:
+      - ../contribution/src:/app/src
+      - ../contribution/tsconfig.json:/app/tsconfig.json
+      - ../contribution/tsconfig.build.json:/app/tsconfig.build.json
+      - ../contribution/nest-cli.json:/app/nest-cli.json
+    networks: [qtim_appnet]
+
   # ===================== GATEWAY (dev, hot reload) =====================
   gateway-dev-qtim:
     profiles: ["dev"]
@@ -183,6 +228,7 @@ services:
       rabbitmq-qtim: { condition: service_healthy }
       users-dev-qtim: { condition: service_started }
       auth-dev-qtim: { condition: service_started }
+      contribution-dev-qtim: { condition: service_started }
       redis-qtim: { condition: service_healthy }
     logging:
       driver: json-file
@@ -201,6 +247,7 @@ volumes:
   rabbitmq_data: {}
   users_pgdata: {}
   auth_pgdata: {}
+  contributions_pgdata: {}
 
 networks:
   qtim_appnet:
@@ -215,5 +262,5 @@ secrets:
     file: ./.secrets/jwt_refresh.key
   jwt_refresh_pub:
     file: ./.secrets/jwt_refresh.pub
-# COMPOSE_PROFILES=dev docker compose up -d
 # COMPOSE_PROFILES=dev docker compose build --no-cache
+# COMPOSE_PROFILES=dev docker compose up -d

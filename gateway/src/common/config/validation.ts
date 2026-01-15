@@ -11,8 +11,8 @@ export const envSchema = Joi.object({
   RABBITMQ_URL: Joi.string().required(),
 
   // Queues
-  RMQ_AVITO_WORKER_QUEUE: Joi.string().min(1).default('avito_worker'),
   RMQ_EVENTS_QUEUE: Joi.string().min(1).default('gateway.events'),
+  RMQ_CONTRIBUTIONS_QUEUE: Joi.string().min(1).default('contributions'),
 
   // Consumer tuning (если будешь использовать)
   RMQ_PREFETCH: Joi.number().integer().min(1).max(500).default(50),

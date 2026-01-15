@@ -6,7 +6,9 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { HttpCacheInterceptor } from './common/redis/http-cache.interceptor';
 import { UserModule } from './modules/user/user.module';
 import { AppCacheModule } from './common/redis/redis.module';
+import { SecurityModule } from './common/secure/secure.module';
 import { LoggerModule } from './common/logger/logger.module';
+import { ContributionModule } from './modules/contribution/contribution.module';
 
 @Module({
   imports: [
@@ -18,8 +20,10 @@ import { LoggerModule } from './common/logger/logger.module';
       expandVariables: true,
     }),
     LoggerModule,
+    SecurityModule,
     AppCacheModule,
     UserModule,
+    ContributionModule,
   ],
   providers: [
     AppBootstrapService,

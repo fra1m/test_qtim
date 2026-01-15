@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 
 export const AUTH_CLIENT = 'AUTH_CLIENT';
 export const USERS_CLIENT = 'USERS_CLIENT';
+export const CONTRIBUTIONS_CLIENT = 'CONTRIBUTIONS_CLIENT';
 
 export function buildRmqOptions(
   cfg: ConfigService,
@@ -51,11 +52,16 @@ export class RmqModule {
   static forServices(): DynamicModule {
     const auth = registerRmqClient(AUTH_CLIENT, 'RMQ_AUTH_QUEUE', 'auth');
     const users = registerRmqClient(USERS_CLIENT, 'RMQ_USERS_QUEUE', 'users');
+    const contributions = registerRmqClient(
+      CONTRIBUTIONS_CLIENT,
+      'RMQ_CONTRIBUTIONS_QUEUE',
+      'contributions',
+    );
 
     return {
       module: RmqModule,
-      imports: [ConfigModule, auth, users],
-      exports: [auth, users],
+      imports: [ConfigModule, auth, users, contributions],
+      exports: [auth, users, contributions],
     };
   }
 
@@ -75,6 +81,19 @@ export class RmqModule {
       module: RmqModule,
       imports: [ConfigModule, users],
       exports: [users],
+    };
+  }
+
+  static forContribution(): DynamicModule {
+    const contributions = registerRmqClient(
+      CONTRIBUTIONS_CLIENT,
+      'RMQ_CONTRIBUTIONS_QUEUE',
+      'contributions',
+    );
+    return {
+      module: RmqModule,
+      imports: [ConfigModule, contributions],
+      exports: [contributions],
     };
   }
 }

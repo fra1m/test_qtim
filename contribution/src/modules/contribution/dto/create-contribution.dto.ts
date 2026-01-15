@@ -1,4 +1,4 @@
-import { IsDateString, IsString, Length } from 'class-validator';
+import { IsDateString, IsInt, IsString, Length, Min } from 'class-validator';
 
 export class CreateContributionDto {
   @IsString({ message: 'Должно быть строкой' })
@@ -15,4 +15,14 @@ export class CreateContributionDto {
 
   @IsDateString({}, { message: 'Некорректная дата публикации' })
   publishedAt!: string;
+
+  @IsInt({ message: 'Автор должен быть числом' })
+  @Min(1, { message: 'Автор должен быть положительным числом' })
+  authorId!: number;
+
+  @IsString({ message: 'Должно быть строкой' })
+  @Length(1, 200, {
+    message: 'Длина имени автора должна быть от 1 до 200 символов',
+  })
+  authorName!: string;
 }
