@@ -13,7 +13,6 @@ describe('ContributionService business logic', () => {
     save: jest.Mock<Promise<ContributionEntity>, [ContributionEntity]>;
     createQueryBuilder: jest.Mock<any, [string]>;
     findOne: jest.Mock<Promise<ContributionEntity | null>, [any]>;
-    preload: jest.Mock<Promise<ContributionEntity | undefined>, [any]>;
     delete: jest.Mock<Promise<{ affected?: number }>, [any]>;
   };
   let qb: {
@@ -21,10 +20,7 @@ describe('ContributionService business logic', () => {
     orderBy: jest.Mock<any, any>;
     skip: jest.Mock<any, any>;
     take: jest.Mock<any, any>;
-    getManyAndCount: jest.Mock<
-      Promise<[ContributionEntity[], number]>,
-      []
-    >;
+    getManyAndCount: jest.Mock<Promise<[ContributionEntity[], number]>, []>;
   };
 
   const makeContribution = (
@@ -66,7 +62,6 @@ describe('ContributionService business logic', () => {
       save: jest.fn(),
       createQueryBuilder: jest.fn().mockReturnValue(qb),
       findOne: jest.fn(),
-      preload: jest.fn(),
       delete: jest.fn(),
     };
 
@@ -156,7 +151,7 @@ describe('ContributionService business logic', () => {
   });
 
   it('update throws when entity not found', async () => {
-    repo.preload.mockResolvedValue(undefined);
+    repo.findOne.mockResolvedValue(null);
 
     await expectHttpError(
       service.update(1, { title: 'Updated' }),
@@ -164,9 +159,19 @@ describe('ContributionService business logic', () => {
     );
   });
 
+  it('update throws when actor is not the author', async () => {
+    const entity = makeContribution({ id: 3, authorId: 9 });
+    repo.findOne.mockResolvedValue(entity);
+
+    await expectHttpError(
+      service.update(3, { title: 'Updated' }, 7),
+      HttpStatus.FORBIDDEN,
+    );
+  });
+
   it('update saves entity and converts publishedAt', async () => {
     const updated = makeContribution({ id: 3, title: 'Updated' });
-    repo.preload.mockResolvedValue(updated);
+    repo.findOne.mockResolvedValue(updated);
     repo.save.mockResolvedValue(updated);
 
     const dto: UpdateContributionDto = {
@@ -174,26 +179,32 @@ describe('ContributionService business logic', () => {
       publishedAt: '2024-03-01T00:00:00.000Z',
     };
 
-    await expect(service.update(3, dto)).resolves.toBe(updated);
-    expect(repo.preload).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: 3,
-        title: 'Updated',
-        publishedAt: expect.any(Date),
-      }),
+    await expect(service.update(3, dto, updated.authorId)).resolves.toBe(
+      updated,
     );
     expect(repo.save).toHaveBeenCalledWith(updated);
   });
 
   it('remove throws when entity not found', async () => {
+    repo.findOne.mockResolvedValue(null);
     repo.delete.mockResolvedValue({ affected: 0 });
 
     await expectHttpError(service.remove(1), HttpStatus.NOT_FOUND);
   });
 
+  it('remove throws when actor is not the author', async () => {
+    repo.findOne.mockResolvedValue(makeContribution({ authorId: 10 }));
+
+    await expectHttpError(service.remove(1, 7), HttpStatus.FORBIDDEN);
+  });
+
   it('remove returns id on success', async () => {
+    const entity = makeContribution();
+    repo.findOne.mockResolvedValue(entity);
     repo.delete.mockResolvedValue({ affected: 1 });
 
-    await expect(service.remove(1)).resolves.toEqual({ id: 1 });
+    await expect(service.remove(1, entity.authorId)).resolves.toEqual({
+      id: 1,
+    });
   });
 });

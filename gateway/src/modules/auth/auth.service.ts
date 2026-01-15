@@ -1,6 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { CreateAuthDto } from './dto/create-auth.dto';
-import { UpdateAuthDto } from './dto/update-auth.dto';
 import { ClientProxy } from '@nestjs/microservices';
 import { AUTH_CLIENT } from 'src/common/rmq/rmq.module';
 import { rpc } from 'src/common/rpc/rpc.util';

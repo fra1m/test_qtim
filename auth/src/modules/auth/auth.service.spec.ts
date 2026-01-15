@@ -29,7 +29,7 @@ describe('AuthService business logic', () => {
     sub: 1,
     email: 'test@example.com',
     name: 'Tester',
-    contributionId: 7,
+    contributionIds: [7],
   };
 
   let configMap: Record<string, unknown>;
@@ -95,7 +95,6 @@ describe('AuthService business logic', () => {
         sub: user.sub,
         email: user.email,
         name: user.name,
-        contributionId: user.contributionId,
       },
       {
         algorithm: 'RS256',

@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { envSchema } from './common/config/validation';
 import { UserModule } from './modules/user/user.module';
+import { join } from 'path';
 
 @Module({
   imports: [
@@ -17,17 +18,31 @@ import { UserModule } from './modules/user/user.module';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (cfg: ConfigService) => ({
-        type: 'postgres',
-        host: cfg.get<string>('POSTGRES_HOST', { infer: true }),
-        port: Number(cfg.get<number>('POSTGRES_PORT', { infer: true })),
-        database: cfg.get<string>('POSTGRES_DB', { infer: true }),
-        username: cfg.get<string>('POSTGRES_USER', { infer: true }),
-        password: cfg.get<string>('POSTGRES_PASSWORD', { infer: true }),
-        autoLoadEntities: true,
-        synchronize: cfg.get<string>('NODE_ENV') !== 'production',
-        maxQueryExecutionTime: 500,
-      }),
+      useFactory: (cfg: ConfigService) => {
+        const isProd =
+          cfg.get<string>('NODE_ENV', { infer: true }) === 'production';
+        const migrationsRunRaw = cfg.get('TYPEORM_MIGRATIONS_RUN');
+        const migrationsRun =
+          typeof migrationsRunRaw === 'boolean'
+            ? migrationsRunRaw
+            : typeof migrationsRunRaw === 'string'
+              ? migrationsRunRaw.toLowerCase() === 'true'
+              : !isProd;
+
+        return {
+          type: 'postgres',
+          host: cfg.get<string>('POSTGRES_HOST', { infer: true }),
+          port: Number(cfg.get<number>('POSTGRES_PORT', { infer: true })),
+          database: cfg.get<string>('POSTGRES_DB', { infer: true }),
+          username: cfg.get<string>('POSTGRES_USER', { infer: true }),
+          password: cfg.get<string>('POSTGRES_PASSWORD', { infer: true }),
+          autoLoadEntities: true,
+          synchronize: false,
+          migrationsRun,
+          migrations: [join(__dirname, 'migrations/*{.ts,.js}')],
+          maxQueryExecutionTime: 500,
+        };
+      },
     }),
     UserModule,
   ],

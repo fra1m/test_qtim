@@ -19,4 +19,7 @@ export const envSchema = Joi.object({
   POSTGRES_DB: Joi.string().required(),
   POSTGRES_USER: Joi.string().required(),
   POSTGRES_PASSWORD: Joi.string().allow('').required(),
+
+  // TypeORM migrations
+  TYPEORM_MIGRATIONS_RUN: Joi.boolean().optional(),
 }).unknown(true);

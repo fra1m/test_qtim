@@ -87,4 +87,32 @@ export class UserService {
   async remove(id: number): Promise<{ id: number }> {
     return await rpc<{ id: number }>(this.users, USERS_PATTERNS.REMOVE, { id });
   }
+
+  async addContributionId(
+    meta: { requestId: string },
+    userId: number,
+    contributionId: number,
+  ): Promise<UserModel> {
+    const user = await rpc<UserModel & { id: number }>(
+      this.users,
+      USERS_PATTERNS.ADD_CONTRIBUTION,
+      { meta, userId, contributionId },
+    );
+
+    return this.withSub(user);
+  }
+
+  async removeContributionId(
+    meta: { requestId: string },
+    userId: number,
+    contributionId: number,
+  ): Promise<UserModel> {
+    const user = await rpc<UserModel & { id: number }>(
+      this.users,
+      USERS_PATTERNS.REMOVE_CONTRIBUTION,
+      { meta, userId, contributionId },
+    );
+
+    return this.withSub(user);
+  }
 }

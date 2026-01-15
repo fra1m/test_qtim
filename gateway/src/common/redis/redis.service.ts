@@ -134,7 +134,7 @@ export class CacheHelper {
       sub?: number;
       name: string;
       email: string;
-      contributionId?: number;
+      contributionIds?: number[] | null;
     },
     ttlSec = 1800,
   ) {
@@ -151,7 +151,7 @@ export class CacheHelper {
       sub: user.sub ?? userId,
       name: user.name,
       email,
-      contributionId: user.contributionId,
+      contributionIds: user.contributionIds,
     };
     await this.setJson(`user:id:${userId}`, payload, ttlSec);
     await this.setJson(`user:email:${email}`, payload, ttlSec);

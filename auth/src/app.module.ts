@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { envSchema } from './common/config/validation';
 import { AuthModule } from './modules/auth/auth.module';
 import { LoggerModule } from './common/logger/logger.module';
+import { join } from 'path';
 
 @Module({
   imports: [
@@ -20,14 +21,29 @@ import { LoggerModule } from './common/logger/logger.module';
       inject: [ConfigService],
 
       useFactory: (cfg: ConfigService) => {
+        const isProd =
+          cfg.get<string>('NODE_ENV', { infer: true }) === 'production';
+        const migrationsRunRaw = cfg.get('TYPEORM_MIGRATIONS_RUN');
+        const migrationsRun =
+          typeof migrationsRunRaw === 'boolean'
+            ? migrationsRunRaw
+            : typeof migrationsRunRaw === 'string'
+              ? migrationsRunRaw.toLowerCase() === 'true'
+              : !isProd;
+
+        const common = {
+          autoLoadEntities: true,
+          synchronize: false,
+          migrationsRun,
+          migrations: [join(__dirname, 'migrations/*{.ts,.js}')],
+          maxQueryExecutionTime: 500,
+        };
         const url = cfg.get<string>('DATABASE_URL', { infer: true });
         if (url && url.length > 0) {
           return {
             type: 'postgres' as const,
             url,
-            autoLoadEntities: true,
-            synchronize: cfg.get<string>('NODE_ENV') !== 'production',
-            maxQueryExecutionTime: 500,
+            ...common,
           };
         }
 
@@ -38,9 +54,7 @@ import { LoggerModule } from './common/logger/logger.module';
           database: cfg.get<string>('POSTGRES_DB', { infer: true }),
           username: cfg.get<string>('POSTGRES_USER', { infer: true }),
           password: cfg.get<string>('POSTGRES_PASSWORD', { infer: true }),
-          autoLoadEntities: true,
-          synchronize: cfg.get<string>('NODE_ENV') !== 'production',
-          maxQueryExecutionTime: 500,
+          ...common,
         };
       },
     }),

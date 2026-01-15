@@ -95,4 +95,23 @@ export class UserService {
 
     return { id: userId };
   }
+
+  async addContribution(userId: number, contributionId: number) {
+    const user = await this.getUserById(userId);
+    const list = user.contributionIds ?? [];
+    if (!list.includes(contributionId)) {
+      list.push(contributionId);
+    }
+    user.contributionIds = list;
+    return await this.userRepository.save(user);
+  }
+
+  async removeContribution(userId: number, contributionId: number) {
+    const user = await this.getUserById(userId);
+    const list = (user.contributionIds ?? []).filter(
+      (id) => id !== contributionId,
+    );
+    user.contributionIds = list.length ? list : null;
+    return await this.userRepository.save(user);
+  }
 }

@@ -11,6 +11,10 @@ export const USERS_PATTERNS = {
   UPDATE: 'users.update',
   /** 'users.remove' */
   REMOVE: 'users.remove',
+  /** 'users.addContribution' */
+  ADD_CONTRIBUTION: 'users.addContribution',
+  /** 'users.removeContribution' */
+  REMOVE_CONTRIBUTION: 'users.removeContribution',
 } as const;
 
 export type USERSPattern = (typeof USERS_PATTERNS)[keyof typeof USERS_PATTERNS];

@@ -1,4 +1,4 @@
-import { IsEmail, IsNumber, IsString, Length } from 'class-validator';
+import { IsEmail, IsString, Length } from 'class-validator';
 
 export class CreateUserDto {
   @IsString({ message: 'Должно быть строкой' })
@@ -7,9 +7,6 @@ export class CreateUserDto {
 
   @IsString({ message: 'Должно быть строкой' })
   name: string;
-
-  // @IsNumber({}, { message: 'Должно быть числом' })
-  // contributionId?: number;
 
   @IsString({ message: 'Должно быть строкой' })
   @Length(6, 16, {

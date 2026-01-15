@@ -117,6 +117,7 @@ export class ContributionController {
       meta?: { requestId?: string };
       id: number;
       updateContributionDto: UpdateContributionDto;
+      actorId?: number;
     },
   ) {
     this.logger.info(
@@ -125,7 +126,11 @@ export class ContributionController {
     );
 
     try {
-      return await this.service.update(data.id, data.updateContributionDto);
+      return await this.service.update(
+        data.id,
+        data.updateContributionDto,
+        data.actorId,
+      );
     } catch (e: any) {
       this.logger.error(
         { rid: data.meta?.requestId, err: e },
@@ -145,14 +150,21 @@ export class ContributionController {
   }
 
   @MessagePattern(CONTRIBUTIONS_PATTERNS.REMOVE)
-  async remove(@Payload() data: { meta?: { requestId?: string }; id: number }) {
+  async remove(
+    @Payload()
+    data: {
+      meta?: { requestId?: string };
+      id: number;
+      actorId?: number;
+    },
+  ) {
     this.logger.info(
       { rid: data.meta?.requestId, id: data.id },
       `${CONTRIBUTIONS_PATTERNS.REMOVE} received`,
     );
 
     try {
-      return await this.service.remove(data.id);
+      return await this.service.remove(data.id, data.actorId);
     } catch (e: any) {
       this.logger.error(
         { rid: data.meta?.requestId, err: e },

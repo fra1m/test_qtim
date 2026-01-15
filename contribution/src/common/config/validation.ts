@@ -24,4 +24,7 @@ export const envSchema = Joi.object({
   RMQ_DLX: Joi.string().min(1).default('dlx'),
   RMQ_MESSAGE_TTL_MS: Joi.number().integer().min(1).optional(),
   RMQ_MAX_LENGTH: Joi.number().integer().min(1).optional(),
+
+  // TypeORM migrations
+  TYPEORM_MIGRATIONS_RUN: Joi.boolean().optional(),
 }).unknown(true);

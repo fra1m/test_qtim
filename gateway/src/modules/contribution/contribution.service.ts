@@ -58,22 +58,24 @@ export class ContributionService {
     meta: { requestId: string },
     id: number,
     updateContributionDto: UpdateContributionDto,
+    actorId: number,
   ): Promise<ContributionModel> {
     return await rpc<ContributionModel>(
       this.contributions,
       CONTRIBUTIONS_PATTERNS.UPDATE,
-      { meta, id, updateContributionDto },
+      { meta, id, updateContributionDto, actorId },
     );
   }
 
   async remove(
     meta: { requestId: string },
     id: number,
+    actorId: number,
   ): Promise<{ id: number }> {
     return await rpc<{ id: number }>(
       this.contributions,
       CONTRIBUTIONS_PATTERNS.REMOVE,
-      { meta, id },
+      { meta, id, actorId },
     );
   }
 }

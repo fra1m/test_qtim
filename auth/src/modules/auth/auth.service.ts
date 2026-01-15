@@ -2,8 +2,6 @@ import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 
 import { Injectable, Inject, UnauthorizedException } from '@nestjs/common';
-import { CreateAuthDto } from './dto/create-auth.dto';
-import { UpdateAuthDto } from './dto/update-auth.dto';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -104,7 +102,6 @@ export class AuthService {
         sub: user.sub,
         email: user.email,
         name: user.name,
-        contributionId: user.contributionId,
       },
       {
         algorithm: 'RS256',

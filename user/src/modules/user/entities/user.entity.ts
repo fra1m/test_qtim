@@ -11,6 +11,6 @@ export class UserEntity extends BaseEntity {
   @Column({ unique: true, nullable: false })
   email: string;
 
-  @Column({ nullable: true })
-  contributionId?: number;
+  @Column({ type: 'int', array: true, nullable: true })
+  contributionIds?: number[] | null;
 }

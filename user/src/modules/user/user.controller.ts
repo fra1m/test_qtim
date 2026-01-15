@@ -199,4 +199,98 @@ export class UserController {
       throw new RpcException({ message: e?.message ?? 'Remove user failed' });
     }
   }
+
+  @MessagePattern(USERS_PATTERNS.ADD_CONTRIBUTION)
+  async addContribution(
+    @Payload()
+    data: {
+      meta?: { requestId: string };
+      userId: number;
+      contributionId: number;
+    },
+  ) {
+    const requestId = data.meta?.requestId;
+
+    this.logger.info(
+      {
+        rid: requestId,
+        userId: data.userId,
+        contributionId: data.contributionId,
+      },
+      `${USERS_PATTERNS.ADD_CONTRIBUTION} received`,
+    );
+
+    try {
+      const user = await this.userService.addContribution(
+        data.userId,
+        data.contributionId,
+      );
+
+      this.logger.info(
+        {
+          rid: requestId,
+          userId: data.userId,
+          contributionId: data.contributionId,
+        },
+        `${USERS_PATTERNS.ADD_CONTRIBUTION} succeeded`,
+      );
+
+      return user;
+    } catch (e: any) {
+      this.logger.error(
+        { rid: requestId, err: e },
+        `${USERS_PATTERNS.ADD_CONTRIBUTION} failed`,
+      );
+      throw new RpcException({
+        message: e?.message ?? 'Add contribution failed',
+      });
+    }
+  }
+
+  @MessagePattern(USERS_PATTERNS.REMOVE_CONTRIBUTION)
+  async removeContribution(
+    @Payload()
+    data: {
+      meta?: { requestId: string };
+      userId: number;
+      contributionId: number;
+    },
+  ) {
+    const requestId = data.meta?.requestId;
+
+    this.logger.info(
+      {
+        rid: requestId,
+        userId: data.userId,
+        contributionId: data.contributionId,
+      },
+      `${USERS_PATTERNS.REMOVE_CONTRIBUTION} received`,
+    );
+
+    try {
+      const user = await this.userService.removeContribution(
+        data.userId,
+        data.contributionId,
+      );
+
+      this.logger.info(
+        {
+          rid: requestId,
+          userId: data.userId,
+          contributionId: data.contributionId,
+        },
+        `${USERS_PATTERNS.REMOVE_CONTRIBUTION} succeeded`,
+      );
+
+      return user;
+    } catch (e: any) {
+      this.logger.error(
+        { rid: requestId, err: e },
+        `${USERS_PATTERNS.REMOVE_CONTRIBUTION} failed`,
+      );
+      throw new RpcException({
+        message: e?.message ?? 'Remove contribution failed',
+      });
+    }
+  }
 }

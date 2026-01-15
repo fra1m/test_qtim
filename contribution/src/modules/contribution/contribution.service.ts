@@ -77,22 +77,56 @@ export class ContributionService {
   async update(
     id: number,
     dto: UpdateContributionDto,
+    actorId?: number,
   ): Promise<ContributionEntity> {
-    const payload: Partial<ContributionEntity> = {
-      title: dto.title,
-      description: dto.description,
-      ...(dto.publishedAt ? { publishedAt: new Date(dto.publishedAt) } : {}),
-    };
-
-    const entity = await this.repo.preload({ id, ...payload });
+    const entity = await this.repo.findOne({ where: { id } });
     if (!entity) {
       throw new HttpException('Contribution not found', HttpStatus.NOT_FOUND);
+    }
+    if (!actorId) {
+      throw new HttpException(
+        'Forbidden: actor is required',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+    if (entity.authorId !== actorId) {
+      throw new HttpException(
+        'Forbidden: not your contribution',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    if (typeof dto.title === 'string') {
+      entity.title = dto.title;
+    }
+    if (typeof dto.description === 'string') {
+      entity.description = dto.description;
+    }
+    if (dto.publishedAt) {
+      entity.publishedAt = new Date(dto.publishedAt);
     }
 
     return await this.repo.save(entity);
   }
 
-  async remove(id: number): Promise<{ id: number }> {
+  async remove(id: number, actorId?: number): Promise<{ id: number }> {
+    const entity = await this.repo.findOne({ where: { id } });
+    if (!entity) {
+      throw new HttpException('Contribution not found', HttpStatus.NOT_FOUND);
+    }
+    if (!actorId) {
+      throw new HttpException(
+        'Forbidden: actor is required',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+    if (entity.authorId !== actorId) {
+      throw new HttpException(
+        'Forbidden: not your contribution',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
     const result = await this.repo.delete(id);
     if (!result.affected) {
       throw new HttpException('Contribution not found', HttpStatus.NOT_FOUND);

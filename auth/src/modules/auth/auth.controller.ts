@@ -1,7 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
 import { AuthService } from './auth.service';
-import { UpdateAuthDto } from './dto/update-auth.dto';
 import { AUTH_PATTERNS } from 'src/contracts/auth.patterns';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { UserModel } from 'src/common/models/user.model';

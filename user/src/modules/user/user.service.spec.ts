@@ -159,4 +159,31 @@ describe('UserService business logic', () => {
 
     await expect(service.removeUser(1)).resolves.toEqual({ id: 1 });
   });
+
+  it('addContribution appends id to empty list', async () => {
+    const user = makeUser({ id: 5, contributionIds: null });
+    repo.findOne.mockResolvedValue(user);
+    repo.save.mockResolvedValue(user);
+
+    await expect(service.addContribution(5, 10)).resolves.toBe(user);
+    expect(user.contributionIds).toEqual([10]);
+  });
+
+  it('addContribution does not duplicate ids', async () => {
+    const user = makeUser({ id: 5, contributionIds: [10] });
+    repo.findOne.mockResolvedValue(user);
+    repo.save.mockResolvedValue(user);
+
+    await expect(service.addContribution(5, 10)).resolves.toBe(user);
+    expect(user.contributionIds).toEqual([10]);
+  });
+
+  it('removeContribution removes id and returns null when empty', async () => {
+    const user = makeUser({ id: 5, contributionIds: [10] });
+    repo.findOne.mockResolvedValue(user);
+    repo.save.mockResolvedValue(user);
+
+    await expect(service.removeContribution(5, 10)).resolves.toBe(user);
+    expect(user.contributionIds).toBeNull();
+  });
 });
