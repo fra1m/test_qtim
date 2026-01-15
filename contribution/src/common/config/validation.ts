@@ -10,9 +10,6 @@ export const envSchema = Joi.object({
   RMQ_CONTRIBUTIONS_QUEUE: Joi.string().default('contributions'),
   RMQ_PREFETCH: Joi.number().integer().min(1).default(16),
 
-  // HTTP
-  PORT: Joi.number().integer().default(3004),
-
   // Postgres
   POSTGRES_HOST: Joi.string().required(),
   POSTGRES_PORT: Joi.number().integer().default(5432),
@@ -27,4 +24,12 @@ export const envSchema = Joi.object({
 
   // TypeORM migrations
   TYPEORM_MIGRATIONS_RUN: Joi.boolean().optional(),
+
+  // Logger
+  LOG_LEVEL: Joi.string()
+    .valid('trace', 'debug', 'info', 'warn', 'error', 'fatal')
+    .optional(),
+  LOG_PRETTY: Joi.boolean().optional(),
+  SERVICE_NAME: Joi.string().min(1).optional(),
+  SERVICE_VERSION: Joi.string().min(1).optional(),
 }).unknown(true);

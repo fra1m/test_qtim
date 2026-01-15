@@ -49,12 +49,10 @@ async function bootstrap() {
   });
 
   await app.startAllMicroservices();
-  await app.listen(cfg.get<number>('PORT', { infer: true }) ?? 3004);
-
   app
     .get(Logger)
     .log(
-      `[${process.env.SERVICE_NAME}] http:${cfg.get('PORT')} | rmq:${rmqUrl} q:${queue} prefetch:${prefetch}`,
+      `[${process.env.SERVICE_NAME}] rmq:${rmqUrl} q:${queue} prefetch:${prefetch}`,
     );
 }
 bootstrap();

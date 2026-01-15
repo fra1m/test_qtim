@@ -9,9 +9,9 @@ export const envSchema = Joi.object({
   RABBITMQ_URL: Joi.string().uri().required(),
   RMQ_USERS_QUEUE: Joi.string().default('users'),
   RMQ_PREFETCH: Joi.number().integer().min(1).default(16),
-
-  // HTTP
-  PORT: Joi.number().integer().default(3002),
+  RMQ_DLX: Joi.string().min(1).default('dlx'),
+  RMQ_MESSAGE_TTL_MS: Joi.number().integer().min(1).optional(),
+  RMQ_MAX_LENGTH: Joi.number().integer().min(1).optional(),
 
   // Postgres (если используешь поля отдельно)
   POSTGRES_HOST: Joi.string().required(),
@@ -22,4 +22,12 @@ export const envSchema = Joi.object({
 
   // TypeORM migrations
   TYPEORM_MIGRATIONS_RUN: Joi.boolean().optional(),
+
+  // Logger
+  LOG_LEVEL: Joi.string()
+    .valid('trace', 'debug', 'info', 'warn', 'error', 'fatal')
+    .optional(),
+  LOG_PRETTY: Joi.boolean().optional(),
+  SERVICE_NAME: Joi.string().min(1).optional(),
+  SERVICE_VERSION: Joi.string().min(1).optional(),
 }).unknown(true);

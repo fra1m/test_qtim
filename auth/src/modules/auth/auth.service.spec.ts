@@ -29,7 +29,6 @@ describe('AuthService business logic', () => {
     sub: 1,
     email: 'test@example.com',
     name: 'Tester',
-    contributionIds: [7],
   };
 
   let configMap: Record<string, unknown>;

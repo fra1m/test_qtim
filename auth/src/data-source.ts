@@ -33,7 +33,7 @@ for (const file of candidates) loadEnvFile(file);
 
 const port = Number(process.env.POSTGRES_PORT ?? 5432);
 
-export const AppDataSource = new DataSource({
+const AppDataSource = new DataSource({
   type: 'postgres',
   host: process.env.POSTGRES_HOST,
   port,

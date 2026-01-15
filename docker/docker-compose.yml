@@ -110,15 +110,12 @@ services:
       CHOKIDAR_USEPOLLING: "true"
       CHOKIDAR_INTERVAL: "200"
       WATCHPACK_POLLING: "true"
-      REDIS_HOST: redis-qtim
-      REDIS_PORT: 6379
     depends_on:
       rabbitmq-qtim: { condition: service_healthy }
       users-db-qtim: { condition: service_healthy }
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "5" }
-    ports: ["3002:3002"]
     volumes:
       - ../user/src:/app/src
       - ../user/tsconfig.json:/app/tsconfig.json
@@ -145,8 +142,6 @@ services:
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt_access_pub
       JWT_REFRESH_PRIVATE_KEY_PATH: /run/secrets/jwt_refresh_key
       JWT_REFRESH_PUBLIC_KEY_PATH: /run/secrets/jwt_refresh_pub
-      REDIS_HOST: redis-qtim
-      REDIS_PORT: 6379
     depends_on:
       rabbitmq-qtim: { condition: service_healthy }
       auth-db-qtim: { condition: service_healthy }
@@ -158,7 +153,6 @@ services:
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "5" }
-    ports: ["3003:3003"]
     volumes:
       - ../auth/src:/app/src
       - ../auth/tsconfig.json:/app/tsconfig.json
@@ -187,7 +181,6 @@ services:
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "5" }
-    ports: ["3004:3004"]
     volumes:
       - ../contribution/src:/app/src
       - ../contribution/tsconfig.json:/app/tsconfig.json
@@ -215,10 +208,7 @@ services:
 
       LOG_LEVEL: debug # for pino
 
-      JWT_PRIVATE_KEY_PATH: /run/secrets/jwt_access_key
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt_access_pub
-      JWT_REFRESH_PRIVATE_KEY_PATH: /run/secrets/jwt_refresh_key
-      JWT_REFRESH_PUBLIC_KEY_PATH: /run/secrets/jwt_refresh_pub
     secrets:
       - jwt_access_key
       - jwt_access_pub
