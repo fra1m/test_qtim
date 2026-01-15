@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
+import { UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -163,5 +164,44 @@ describe('AuthService business logic', () => {
     );
     expect(jwt.signAsync).not.toHaveBeenCalled();
     expect(repo.upsert).not.toHaveBeenCalled();
+  });
+
+  it('loginByPassword returns tokens when password is valid', async () => {
+    const tokens = {
+      accessToken: 'access-token',
+      refreshToken: 'refresh-token',
+      accessJti: 'access-jti',
+      refreshJti: 'refresh-jti',
+      accessTtlSec: 1800,
+      refreshTtlSec: 2592000,
+    };
+    const verifySpy = jest
+      .spyOn(service as any, 'verifyPassword')
+      .mockResolvedValue(true);
+    const generateSpy = jest
+      .spyOn(service, 'generateTokens')
+      .mockResolvedValue(tokens);
+
+    const result = await service.loginByPassword({
+      user,
+      password: 'secret',
+    });
+
+    expect(verifySpy).toHaveBeenCalledWith(user.sub, 'secret');
+    expect(generateSpy).toHaveBeenCalledWith(user);
+    expect(result).toEqual(tokens);
+  });
+
+  it('loginByPassword throws UnauthorizedException when password is invalid', async () => {
+    const verifySpy = jest
+      .spyOn(service as any, 'verifyPassword')
+      .mockResolvedValue(false);
+    const generateSpy = jest.spyOn(service, 'generateTokens');
+
+    await expect(
+      service.loginByPassword({ user, password: 'wrong' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(verifySpy).toHaveBeenCalledWith(user.sub, 'wrong');
+    expect(generateSpy).not.toHaveBeenCalled();
   });
 });

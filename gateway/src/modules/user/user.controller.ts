@@ -11,6 +11,7 @@ import {
   HttpException,
   InternalServerErrorException,
   Res,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -21,6 +22,7 @@ import { ReqId } from 'src/common/http/req-id.decorator';
 import { CacheHelper } from 'src/common/redis/redis.service';
 import { AppLogger } from 'src/common/logger/logger.service';
 import { AuthService } from '../auth/auth.service';
+import { AuthUserDto } from './dto/auth-user.dto';
 
 @Controller('user')
 export class UserController {
@@ -86,109 +88,121 @@ export class UserController {
     }
   }
 
-//   @Post('/login')
-//   async authUser(
-//     @Body() dto: AuthUserDto,
-//     @ReqId() reqId: string,
-//     @Res({ passthrough: true }) res: Response,
-//   ): Promise<{
-//     user: UserModel;
-//     tokens: Tokens;
-//   }> {
-//     const meta = { requestId: reqId };
-//     const email = dto.email.trim().toLowerCase();
-//     const password = dto.password;
+  @Post('/login')
+  async authUser(
+    @Body() dto: AuthUserDto,
+    @ReqId() reqId: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{
+    user: UserModel;
+    tokens: TokenModel;
+  }> {
+    const meta = { requestId: reqId };
+    const email = dto.email.trim().toLowerCase();
+    const password = dto.password;
 
-//     const lockKey = `auth:${email}`;
-//     const lockOk = await this.cache.setPlainNX(lockKey, reqId, 30);
-//     if (!lockOk) {
-//       throw new ConflictException('Registration in progress for this email');
-//     }
+    const lockKey = `auth:${email}`;
+    const lockOk = await this.cache.setPlainNX(lockKey, reqId, 30);
+    if (!lockOk) {
+      throw new ConflictException('Login in progress for this email');
+    }
 
-//     this.logger.info({ rid: reqId, email }, 'users.auth started');
-//     try {
-//       // 1) user из кэша → БД при промахе
-//       const cacheKey = `user:email:${email}`;
-//       const cached = await this.cache.getJson<UserModel>(cacheKey);
-//       let user = cached && cached.sub ? cached : null;
-//       if (!user) {
-//         user = await this.usersService.getByEmail(meta, { email });
-//         if (!user)
-//           throw new UnauthorizedException('Не верный логин или пароль');
-//       }
-//       if (!user.sub) {
-//         throw new InternalServerErrorException('User id is missing');
-//       }
+    this.logger.info({ rid: reqId, email }, 'users.auth started');
+    try {
+      const normalizeUser = (
+        value: UserModel | (UserModel & { id?: number }) | null,
+      ) => {
+        if (!value) return null;
+        const sub = value.sub ?? (value as { id?: number }).id;
+        if (!sub) return null;
+        return { ...value, sub } as UserModel;
+      };
 
-//       // 2) проверка пароля в auth-сервисе
-//       const tokens = await this.authService.authByPassword(meta, {
-//         user,
-//         password,
-//       });
+      // 1) user из кэша → БД при промахе
+      const cacheKey = `user:email:${email}`;
+      const cached = await this.cache.getJson<UserModel & { id?: number }>(
+        cacheKey,
+      );
+      let user = normalizeUser(cached);
+      if (!user) {
+        user = normalizeUser(
+          await this.userService.getByEmail(meta, { email }),
+        );
+        if (!user)
+          throw new UnauthorizedException('Не верный логин или пароль');
+      }
+      if (!user.sub)
+        throw new InternalServerErrorException('User id is missing');
 
-//       // 3) кука с refresh
-//       const isProd = process.env.NODE_ENV === 'production';
-//       res.cookie('refreshToken', tokens.refreshToken, {
-//         httpOnly: true,
-//         secure: isProd,
-//         sameSite: isProd ? 'none' : 'lax',
-//         path: '/',
-//         maxAge: 30 * 24 * 60 * 60 * 1000,
-//       });
+      // 2) проверка пароля в auth-сервисе
+      const tokens = await this.authService.authByPassword(meta, {
+        user,
+        password,
+      });
 
-//       // 4) прогреваем кэш пользователя (safe snapshot)
-//       await this.cache.writeUserCache(
-//         {
-//           id: user.sub,
-//           name: user.name,
-//           email: user.email,
-//         },
-//         1800,
-//       );
+      // 3) кука с refresh
+      const isProd = process.env.NODE_ENV === 'production';
+      res.cookie('refreshToken', tokens.refreshToken, {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: isProd ? 'none' : 'lax',
+        path: '/',
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+      });
 
-//       // 5) метки сессии (по JTI), если они есть в токенах
-//       //    это позволит делать logout/ревокацию/онлайн-индикатор
-//       if (tokens.accessJti) {
-//         await this.cache.markSession(
-//           tokens.accessJti,
-//           user.sub,
-//           tokens.accessTtlSec ?? 900,
-//         );
-//       }
-//       if (tokens.refreshJti) {
-//         await this.cache.markSession(
-//           tokens.refreshJti,
-//           user.sub,
-//           tokens.refreshTtlSec ?? 30 * 24 * 3600,
-//         );
-//       }
+      // 4) прогреваем кэш пользователя (safe snapshot)
+      await this.cache.writeUserCache(
+        {
+          id: user.sub,
+          name: user.name,
+          email: user.email,
+        },
+        1800,
+      );
 
-//       await this.cache.mapRequestToUser(reqId, user.sub);
-//       await this.cache.markOnline(user.sub, 60);
+      // 5) метки сессии (по JTI), если они есть в токенах
+      //    это позволит делать logout/ревокацию/онлайн-индикатор
+      if (tokens.accessJti) {
+        await this.cache.markSession(
+          tokens.accessJti,
+          user.sub,
+          tokens.accessTtlSec ?? 900,
+        );
+      }
+      if (tokens.refreshJti) {
+        await this.cache.markSession(
+          tokens.refreshJti,
+          user.sub,
+          tokens.refreshTtlSec ?? 30 * 24 * 3600,
+        );
+      }
 
-//       this.logger.info({ rid: reqId, id: user.sub }, 'users.auth done');
-//       return { user, tokens };
-//     } catch (e) {
-//       this.logger.error({ rid: reqId, err: e }, 'users.auth failed');
-//       if (e instanceof HttpException) throw e;
-//       throw new UnauthorizedException('Invalid credentials');
-//     } finally {
-//       await this.cache.del(lockKey);
-//     }
-//   }
+      await this.cache.mapRequestToUser(reqId, user.sub);
+      await this.cache.markOnline(user.sub, 60);
 
-//   @Get(':id')
-//   findOne(@Param('id') id: string) {
-//     return this.userService.findOne(+id);
-//   }
+      this.logger.info({ rid: reqId, id: user.sub }, 'users.auth done');
+      return { user, tokens };
+    } catch (e) {
+      this.logger.error({ rid: reqId, err: e }, 'users.auth failed');
+      if (e instanceof HttpException) throw e;
+      throw new UnauthorizedException('Invalid credentials');
+    } finally {
+      await this.cache.del(lockKey);
+    }
+  }
 
-//   @Patch(':id')
-//   update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-//     return this.userService.update(+id, updateUserDto);
-//   }
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.userService.findOne(+id);
+  }
 
-//   @Delete(':id')
-//   remove(@Param('id') id: string) {
-//     return this.userService.remove(+id);
-//   }
-// }
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+    return this.userService.update(+id, updateUserDto);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.userService.remove(+id);
+  }
+}

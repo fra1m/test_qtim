@@ -49,23 +49,31 @@ export class AuthController {
     }
   }
 
-  @MessagePattern('findAllAuth')
-  findAll() {
-    return this.authService.findAll();
-  }
+  @MessagePattern(AUTH_PATTERNS.AUTH_BY_PASSWORD)
+  async loginByPassword(
+    @Payload()
+    data: {
+      meta: { requestId: string };
+      user: UserModel;
+      password: string;
+    },
+  ) {
+    this.logger.info(
+      { rid: data.meta?.requestId, userId: data.user?.sub },
+      AUTH_PATTERNS.AUTH_BY_PASSWORD,
+    );
+    try {
+      return await this.authService.loginByPassword({
+        user: data.user,
+        password: data.password,
+      });
+    } catch (e: any) {
+      this.logger.warn(
+        { rid: data.meta?.requestId, userId: data.user?.sub, err: e?.message },
+        AUTH_PATTERNS.AUTH_BY_PASSWORD,
+      );
 
-  @MessagePattern('findOneAuth')
-  findOne(@Payload() id: number) {
-    return this.authService.findOne(id);
-  }
-
-  @MessagePattern('updateAuth')
-  update(@Payload() updateAuthDto: UpdateAuthDto) {
-    return this.authService.update(updateAuthDto.id, updateAuthDto);
-  }
-
-  @MessagePattern('removeAuth')
-  remove(@Payload() id: number) {
-    return this.authService.remove(id);
+      throw new RpcException({ message: 'Invalid credentials', status: 401 });
+    }
   }
 }

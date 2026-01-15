@@ -37,19 +37,54 @@ export class UserService {
     return this.withSub(exists);
   }
 
-  findAll() {
-    return `This action returns all user`;
+  async getByEmail(
+    meta: { requestId: string },
+    params: { email: string },
+  ): Promise<UserModel | null> {
+    const exists = await rpc<(UserModel & { id: number }) | null>(
+      this.users,
+      USERS_PATTERNS.GET_BY_EMAIL,
+      {
+        meta,
+        email: params.email,
+      },
+    );
+
+    if (!exists) return null;
+    return this.withSub(exists);
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} user`;
+  async findAll(): Promise<UserModel[]> {
+    const list = await rpc<Array<UserModel & { id: number }>>(
+      this.users,
+      USERS_PATTERNS.GET_ALL,
+      {},
+    );
+
+    return this.withSubList(list);
   }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
+  async findOne(id: number): Promise<UserModel> {
+    const user = await rpc<UserModel & { id: number }>(
+      this.users,
+      USERS_PATTERNS.GET_BY_ID,
+      { id },
+    );
+
+    return this.withSub(user);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+  async update(id: number, updateUserDto: UpdateUserDto): Promise<UserModel> {
+    const user = await rpc<UserModel & { id: number }>(
+      this.users,
+      USERS_PATTERNS.UPDATE,
+      { updateUserDto: { ...updateUserDto, id } },
+    );
+
+    return this.withSub(user);
+  }
+
+  async remove(id: number): Promise<{ id: number }> {
+    return await rpc<{ id: number }>(this.users, USERS_PATTERNS.REMOVE, { id });
   }
 }

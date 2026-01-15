@@ -1,7 +1,7 @@
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, UnauthorizedException } from '@nestjs/common';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
 import { ConfigService } from '@nestjs/config';
@@ -62,6 +62,16 @@ export class AuthService {
 
   private hmacPepper(value: string, pepper: string): string {
     return crypto.createHmac('sha256', pepper).update(value).digest('hex');
+  }
+
+  private async verifyPassword(
+    userId: number,
+    password: string,
+  ): Promise<boolean> {
+    const row = await this.tokens.findOne({ where: { userId } });
+    if (!row?.passwordHash) return false;
+    const isMatch: boolean = await bcrypt.compare(password, row.passwordHash);
+    return isMatch;
   }
 
   async generateHash(res: string): Promise<string> {
@@ -140,19 +150,16 @@ export class AuthService {
     };
   }
 
-  findAll() {
-    return `This action returns all auth`;
-  }
+  /** Логин: проверить пароль по userId и выдать токены по переданному снэпшоту user */
+  async loginByPassword(params: {
+    user: UserModel;
+    password: string;
+  }): Promise<IssuedTokens> {
+    const ok = await this.verifyPassword(params.user.sub, params.password);
 
-  findOne(id: number) {
-    return `This action returns a #${id} auth`;
-  }
-
-  update(id: number, updateAuthDto: UpdateAuthDto) {
-    return `This action updates a #${id} auth`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} auth`;
+    if (!ok) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    return await this.generateTokens(params.user);
   }
 }

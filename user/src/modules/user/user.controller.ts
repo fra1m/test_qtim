@@ -91,7 +91,6 @@ export class UserController {
     }
   }
 
-  //TODO мб замменить email на dto
   @MessagePattern(USERS_PATTERNS.GET_BY_EMAIL)
   async getUserByEmail(
     @Payload() data: { meta: { requestId: string }; email: string },
@@ -105,7 +104,15 @@ export class UserController {
     );
 
     try {
-      const user = await this.userService.getUserByEmailOrFail(data.email);
+      const user = await this.userService.getUserByEmail(data.email);
+
+      if (!user) {
+        this.logger.info(
+          { rid: data.meta?.requestId, email: data.email },
+          `${USERS_PATTERNS.GET_BY_EMAIL} not found`,
+        );
+        return null;
+      }
 
       this.logger.info(
         { rid: data.meta?.requestId, user },

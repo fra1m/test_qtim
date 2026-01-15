@@ -27,20 +27,17 @@ export class AuthService {
       },
     );
   }
-
-  findAll() {
-    return `This action returns all auth`;
-  }
-
-  findOne(id: number) {
-    return `This action returns a #${id} auth`;
-  }
-
-  update(id: number, updateAuthDto: UpdateAuthDto) {
-    return `This action updates a #${id} auth`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} auth`;
+  async authByPassword(
+    meta: { requestId: string },
+    params: { user: UserModel; password: string },
+  ): Promise<TokenModel> {
+    return await rpc<TokenModel>(
+      this.auth,
+      AUTH_PATTERNS.AUTH_LOGIN_BY_PASSWORD,
+      {
+        meta,
+        ...params,
+      },
+    );
   }
 }

@@ -9,8 +9,11 @@ import { IssuedTokens } from 'src/common/models/token.model';
 
 describe('AuthController', () => {
   let controller: AuthController;
-  let authService: { generateTokens: jest.Mock<Promise<IssuedTokens>, any> };
-  let logger: { info: jest.Mock; error: jest.Mock };
+  let authService: {
+    generateTokens: jest.Mock<Promise<IssuedTokens>, any>;
+    loginByPassword: jest.Mock<Promise<IssuedTokens>, any>;
+  };
+  let logger: { info: jest.Mock; error: jest.Mock; warn: jest.Mock };
 
   const user: UserModel = {
     sub: 42,
@@ -21,10 +24,12 @@ describe('AuthController', () => {
   beforeEach(async () => {
     authService = {
       generateTokens: jest.fn(),
+      loginByPassword: jest.fn(),
     };
     logger = {
       info: jest.fn(),
       error: jest.fn(),
+      warn: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -78,6 +83,57 @@ describe('AuthController', () => {
       expect(logger.error).toHaveBeenCalledWith(
         { rid: 'rid-2', err: expect.any(Error) },
         AUTH_PATTERNS.GENERATE_TOKENS,
+      );
+    }
+  });
+
+  it('loginByPassword returns tokens from service', async () => {
+    const tokens: IssuedTokens = {
+      accessToken: 'access-token',
+      refreshToken: 'refresh-token',
+      accessJti: 'access-jti',
+      refreshJti: 'refresh-jti',
+      accessTtlSec: 1800,
+      refreshTtlSec: 2592000,
+    };
+    authService.loginByPassword.mockResolvedValue(tokens);
+
+    const result = await controller.loginByPassword({
+      meta: { requestId: 'rid-3' },
+      user,
+      password: 'secret',
+    });
+
+    expect(result).toBe(tokens);
+    expect(authService.loginByPassword).toHaveBeenCalledWith({
+      user,
+      password: 'secret',
+    });
+    expect(logger.info).toHaveBeenCalledWith(
+      { rid: 'rid-3', userId: user.sub },
+      AUTH_PATTERNS.AUTH_BY_PASSWORD,
+    );
+  });
+
+  it('loginByPassword wraps errors in RpcException with 401 status', async () => {
+    authService.loginByPassword.mockRejectedValue(new Error('bad creds'));
+
+    try {
+      await controller.loginByPassword({
+        meta: { requestId: 'rid-4' },
+        user,
+        password: 'secret',
+      });
+      fail('Expected RpcException');
+    } catch (err) {
+      expect(err).toBeInstanceOf(RpcException);
+      expect((err as RpcException).getError()).toEqual({
+        message: 'Invalid credentials',
+        status: 401,
+      });
+      expect(logger.warn).toHaveBeenCalledWith(
+        { rid: 'rid-4', userId: user.sub, err: 'bad creds' },
+        AUTH_PATTERNS.AUTH_BY_PASSWORD,
       );
     }
   });
